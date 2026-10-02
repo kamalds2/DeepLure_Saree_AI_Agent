@@ -1,0 +1,128 @@
+# =============================================================================
+# DeepLure Saree AI Agent — Central Configuration
+# =============================================================================
+# WHY YAML? Single source of truth. All scripts read from here.
+# This avoids scattered magic numbers in code and makes Kaggle reruns easy.
+
+# ---------------------------------------------------------------------------
+# DATA
+# ---------------------------------------------------------------------------
+data:
+  kaggle_root: "./kaggle"          # Indian Saree Patterns (Kaggle / Roboflow)
+  handloom_root: "./handloom_sarees"  # DeepLure proprietary corpus
+  num_classes: 4                   # Banarasi, Bandhani, Ikat, Pichwai
+  class_names: ["Banarasi", "Bandhani", "Ikat", "Pichwai"]
+
+  # Image dimensions
+  # WHY 224? ImageNet pretrained EfficientNet-B3 expects 300px, but 224 works
+  # fine and halves memory usage on Kaggle free GPU. We resize+crop to 224.
+  image_size: 224
+  resize_size: 256      # Resize first, then random crop to 224
+
+  # Gallery/Query split (for handloom evaluation)
+  gallery_query_split_seed: 42    # Reproducible
+  query_fraction: 0.20            # 20% of handloom images = queries
+
+# ---------------------------------------------------------------------------
+# MODEL
+# ---------------------------------------------------------------------------
+model:
+  backbone: "efficientnet_b3"     # torchvision key
+  pretrained: true                # ImageNet weights (disclosed)
+  # WHY 512? Compact enough for fast cosine search; expressive enough for
+  # fine-grained retrieval. Standard in face recognition (ArcFace papers).
+  embedding_dim: 512
+  dropout: 0.3                    # Applied before embedding FC layer
+
+# ---------------------------------------------------------------------------
+# ARCFACE LOSS
+# ---------------------------------------------------------------------------
+arcface:
+  # WHY m=0.5? Standard value from ArcFace paper (Deng et al. 2019).
+  # 0.5 radians ≈ 28.6° angular margin. Empirically best on fine-grained tasks.
+  margin: 0.5
+  # WHY s=64? Scale factor re-amplifies the softmax logits after L2 norm.
+  # Without scaling, gradients vanish on the unit sphere. s=64 is the paper default.
+  scale: 64.0
+
+# ---------------------------------------------------------------------------
+# TRAINING — 3 PHASES
+# ---------------------------------------------------------------------------
+training:
+  # Phase 1: Head warmup — freeze backbone, train only embedding + ArcFace head
+  phase1:
+    epochs: 5
+    lr_head: 1.0e-3
+    freeze_backbone: true
+    # WHY? Let the new head adapt to the feature space before disturbing
+    # pretrained ImageNet weights. Prevents "cold start" gradient shock.
+
+  # Phase 2: Full fine-tuning with discriminative learning rates
+  phase2:
+    epochs: 25
+    lr_backbone: 1.0e-5     # Very small — preserve ImageNet texture features
+    lr_head: 1.0e-4         # 10× backbone rate — head needs more adaptation
+    lr_arcface: 1.0e-4
+    freeze_backbone: false
+    # WHY discriminative LR? Backbone already knows textures from ImageNet.
+    # We nudge it gently toward saree-specific patterns while keeping
+    # its general texture knowledge.
+
+  # Phase 3: Color invariance fine-tuning — reinforce grayscale robustness
+  phase3:
+    epochs: 5
+    lr_backbone: 0           # Backbone frozen again
+    lr_head: 1.0e-5          # Very gentle
+    grayscale_prob: 0.7      # Increased from 0.3 to 0.7
+    freeze_backbone: true
+    # WHY phase 3? Final push for color invariance without risking catastrophic
+    # forgetting of texture features learned in phase 2.
+
+  # Common training settings
+  batch_size: 32             # Fits EfficientNet-B3 + 224px on Kaggle T4/P100
+  num_workers: 2             # Kaggle has 2 CPU cores
+  weight_decay: 1.0e-4       # AdamW regularization
+  scheduler: "cosine"        # CosineAnnealingLR — smooth decay, no step jumps
+  gradient_clip: 1.0         # Clip gradients to prevent spikes on small dataset
+
+# ---------------------------------------------------------------------------
+# AUGMENTATION
+# ---------------------------------------------------------------------------
+augmentation:
+  # WHY these specific values?
+  # hue=0.3, saturation=0.8: Aggressive enough to break color dependencies
+  # but not so extreme that it destroys contrast cues needed for weave patterns.
+  color_jitter:
+    brightness: 0.4
+    contrast: 0.4
+    saturation: 0.8
+    hue: 0.3
+
+  random_grayscale_prob: 0.3   # Phase 1+2 default; bumped to 0.7 in phase 3
+
+  # WHY vertical flip? Saree designs are often symmetric top-to-bottom.
+  random_vertical_flip_prob: 0.5
+  random_horizontal_flip_prob: 0.5
+
+  # WHY rotation 15°? Slight orientation variance in product photography.
+  # More than 15° distorts the weave pattern recognition.
+  random_rotation_degrees: 15
+
+# ---------------------------------------------------------------------------
+# EVALUATION
+# ---------------------------------------------------------------------------
+evaluation:
+  # Recall@K: top-k retrieval accuracy
+  recall_k_values: [1, 5, 10]
+  # Verification threshold sweep
+  similarity_threshold_steps: 100   # Number of threshold values to sweep for ROC
+
+# ---------------------------------------------------------------------------
+# PATHS
+# ---------------------------------------------------------------------------
+paths:
+  checkpoint_dir: "./checkpoints"
+  gallery_embeddings: "./gallery_embeddings.npy"
+  gallery_labels: "./gallery_labels.npy"
+  logs_dir: "./logs"
+  reports_dir: "./reports"

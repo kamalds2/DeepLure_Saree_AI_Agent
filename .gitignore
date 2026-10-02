@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+*.egg-info/
+dist/
+build/
+
+# PyTorch / ML
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+runs/
+wandb/
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_metadata
+
+# Data (DO NOT commit proprietary data)
+handloom_sarees/
+kaggle/
+data/raw/
+*.csv
+*.json
+gallery_embeddings.npy
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+logs/
+*.log
+
+# Secrets
+.env
+*.key
