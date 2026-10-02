@@ -1,50 +1,52 @@
-# models/__init__.py
+"""
+DeepLure Saree AI Agent — Models Package (Plan v2.0)
+"""
+
+import torch
+import torch.nn as nn
 from .backbone import EfficientNetB3Backbone
 from .embedding_head import EmbeddingHead, SareeEmbeddingModel
 from .arcface import ArcFaceLoss
+from .metric_losses import BatchHardTripletLoss, SupConLoss
+
+# Aliases
+SareeBackbone = EfficientNetB3Backbone
+SareeMetricModel = SareeEmbeddingModel
 
 
-def build_model(config: dict) -> tuple:
+def build_model(
+    backbone_name: str = "efficientnet_b3",
+    pretrained: bool = True,
+    embedding_dim: int = 512,
+    dropout: float = 0.3,
+    num_classes: int = 4,
+    arcface_margin: float = 0.5,
+    arcface_scale: float = 64.0,
+):
     """
-    Factory function to build the complete model from config.
-
-    Returns:
-        (model, criterion): SareeEmbeddingModel and ArcFaceLoss ready for training
+    Factory function to construct backbone, embedding head, and ArcFace loss.
     """
-    from data import NUM_CLASSES
-
-    backbone = EfficientNetB3Backbone(
-        pretrained=config["model"]["pretrained"]
-    )
-    head = EmbeddingHead(
-        in_features=EfficientNetB3Backbone.FEATURE_DIM,
-        embedding_dim=config["model"]["embedding_dim"],
-        dropout=config["model"]["dropout"],
-    )
-    model     = SareeEmbeddingModel(backbone, head)
+    backbone = EfficientNetB3Backbone(pretrained=pretrained)
+    in_features = getattr(backbone, "FEATURE_DIM", 1536)
+    head = EmbeddingHead(in_features=in_features, embedding_dim=embedding_dim, dropout=dropout)
+    model = SareeEmbeddingModel(backbone=backbone, embedding_head=head)
     criterion = ArcFaceLoss(
-        in_features=config["model"]["embedding_dim"],
-        num_classes=NUM_CLASSES,
-        s=config["arcface"]["scale"],
-        m=config["arcface"]["margin"],
+        in_features=embedding_dim,
+        out_features=num_classes,
+        s=arcface_scale,
+        m=arcface_margin
     )
-
-    # Print parameter count (efficiency report)
-    param_counts = model.count_parameters()
-    arcface_params = sum(p.numel() for p in criterion.parameters())
-    print("\n[model] Parameter summary:")
-    print(f"  Backbone (EfficientNet-B3): {param_counts['backbone']:,}")
-    print(f"  Embedding Head:             {param_counts['head']:,}")
-    print(f"  ArcFace Loss:               {arcface_params:,}")
-    print(f"  TOTAL:                      {param_counts['total'] + arcface_params:,}")
-
     return model, criterion
 
 
 __all__ = [
     "EfficientNetB3Backbone",
+    "SareeBackbone",
     "EmbeddingHead",
     "SareeEmbeddingModel",
+    "SareeMetricModel",
     "ArcFaceLoss",
+    "BatchHardTripletLoss",
+    "SupConLoss",
     "build_model",
 ]
