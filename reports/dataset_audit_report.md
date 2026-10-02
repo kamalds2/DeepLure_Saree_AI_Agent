@@ -1,12 +1,10 @@
-# 📊 DeepLure Saree AI Agent — Dataset Audit Report
+# 📊 DeepLure Saree AI Agent — Visual Dataset Audit Report
 
 **Data Root:** `kaggle`  
-**Total Images:** 1468  
-**Unique Images:** 1463  
-**Duplicates Detected:** 5  
-**Cross-Split Leakage Instances:** 0
+**Total Valid Images:** 1468  
+**Corrupted Files Detected:** 0
 
-## Split Breakdown
+## Split & Category Breakdown
 | Split | Banarasi | Bandhani | Ikat | Pichwai | Total |
 |---|---|---|---|---|---|
 | `train` | 432 | 279 | 303 | 279 | **1293** |
@@ -17,8 +15,7 @@
 - **Width:** Min 0px, Max 0px, Mean 0.0px
 - **Height:** Min 0px, Max 0px, Mean 0.0px
 
-## Key Findings & Guardrails
-- Total 1468 images audited across 3 splits.
-- Class distribution: {'Banarasi': 489, 'Bandhani': 316, 'Ikat': 342, 'Pichwai': 321}.
-- Detected 0 cross-split duplicate instances.
-- Recommendation: Ensure all cross-split duplicates are removed before training.
+## Core Visual Identity Guardrails
+- 🟢 Strict Rule: Identity is derived from visual weave/motifs, never filenames or image paths.
+- 🟢 Coarse categories (Banarasi, Bandhani, Ikat, Pichwai) serve as auxiliary domain features only.
+- 🟢 Color invariance is enforced by training transformations, ensuring color is not used for design matching.

@@ -9,6 +9,8 @@ from .dataset import (
 )
 from .transforms import get_train_transforms, get_val_transforms, get_phase3_transforms
 from .splits import build_handloom_split, load_split_from_csv
+from .dataset_audit import VisualDatasetAuditor
+from .ground_truth import VisualGroundTruthManager
 
 __all__ = [
     "KaggleSareeDataset",
@@ -22,4 +24,6 @@ __all__ = [
     "get_phase3_transforms",
     "build_handloom_split",
     "load_split_from_csv",
+    "VisualDatasetAuditor",
+    "VisualGroundTruthManager",
 ]
